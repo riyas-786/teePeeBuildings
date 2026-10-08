@@ -1,0 +1,16 @@
+<p>propertes works!</p>
+<!-- <app-popup></app-popup> -->
+<!-- Buttons -->
+ <div>
+@for (item of property(); track $index) {
+  <button (click)="handlebutton(item)">{{ item.name }}</button>
+}
+<button (click)="addNewProperty()">+</button>
+ </div>
+
+<!-- Iterate through the selected rooms -->
+<div>
+  @for (room of dislay(); track room.id) {
+  <button >Room {{ room.room }} - {{ room.remark }}</button>
+  }
+</div>

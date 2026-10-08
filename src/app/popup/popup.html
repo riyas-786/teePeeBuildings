@@ -1,0 +1,46 @@
+<button class="btn btn-primary" (click)="openPopup()">+</button>
+
+<dialog #modalDialog class="custom-dialog">
+  <header class="dialog-header">
+    <h2>Add Property</h2>
+    <button class="icon-close" (click)="closePopup()" aria-label="Close">&times;</button>
+  </header>
+
+  <div class="field">
+    <label>Property name</label>
+    <input type="text" [value]="propertyName()" (input)="setName($any($event.target).value)">
+  </div>
+
+  <div class="field">
+    <label>Number of rooms</label>
+    <input #box type="number" min="1" placeholder="Type a number and press Enter"
+           (input)="makeRooms(box.value)">
+    @if (errorMessage()) {
+      <small class="error-text">{{ errorMessage() }}</small>
+    }
+  </div>
+
+  @if (rooms().length) {
+    <div class="rooms">
+      @for (room of rooms(); track $index) {
+        <div class="room-row">
+          <span class="badge">{{ $index + 1 }}</span>
+          <input type="text" placeholder="Room no" [value]="room.room"
+                 (input)="updateRoomNo($index, $any($event.target).value)">
+          <input type="text" placeholder="Remark" [value]="room.remark"
+                 (input)="updateRoomRemark($index, $any($event.target).value)">
+          <select [value]="room.status" (change)="updateRoomStatus($index, $any($event.target).value)">
+            @for (s of statusOptions; track s) {
+              <option [value]="s">{{ s }}</option>
+            }
+          </select>
+        </div>
+      }
+    </div>
+  }
+
+  <footer class="actions">
+    <button class="btn btn-secondary" (click)="closePopup()">Close</button>
+    <button class="btn btn-primary" (click)="savePopup()">Add</button>
+  </footer>
+</dialog>

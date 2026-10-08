@@ -1,0 +1,97 @@
+<div class="wrap">
+  <h1>TEE PEE</h1>
+  <div class="actions">
+    <app-popup (save)="onPopupSave($event)"></app-popup>
+    @if(btn()=='btn btn-primary'){
+    <button [class]="btn()" (click)="sendData()">Save</button>
+    }@else{
+    <button [class]="btnEdit()" (click)="editbuttonToggle()">Edit</button>
+    }
+
+
+    <button class="btn btn-danger" (click)="deleteBuilding()">Delete</button>
+    <!-- <button class="theme-toggle" (click)="toggleDark()">
+      {{ darkMode() ? '☀️ Light' : '🌙 Dark' }}
+    </button> -->
+    @if (saveMessage()) {
+    <div class="toast" [class.success]="saveStatus() === 'success'" [class.error]="saveStatus() === 'error'">
+      {{ saveMessage() }}
+    </div>
+    }
+  </div>
+  <hr>
+
+  <!-- Building selector -->
+  <div class="bsel" role="group" aria-label="Select building">
+    <button [attr.aria-pressed]="selected() === -1" (click)="selected.set(-1)">
+
+      All buildings<small>{{ buildings().length }}</small>
+    </button>
+
+
+
+    @if(btn()=='btn btn-primary'){
+    @for (b of buildings(); track b.name; let i = $index) {
+    <button [attr.aria-pressed]="selected() === i" (click)=" sendDataToPopup(i)">
+      {{ b.name }}<small>{{ b.rooms.length }}</small>
+    </button>
+    }
+    }@else{
+    @for (b of buildings(); track b.name; let i = $index) {
+    <button [attr.aria-pressed]="selected() === i" (click)="selected.set(i)">
+      {{ b.name }}<small>{{ b.rooms.length }}</small>
+    </button>
+    }
+    }
+  </div>
+
+  <!-- Buildings -->
+  <div class="grid">
+    @for (item of visibleBuildings(); track item.building.name) {
+    <section class="bld">
+      <div class="bh">
+        <h2>{{ item.building.name }}</h2>
+        <small>{{ item.counts.vacant }} vacant of {{ item.building.rooms.length }}</small>
+      </div>
+
+      <div class="mini">
+        @for (s of statuses; track s.key) {
+        <i [style.width.%]="pct(item.counts[s.key], item.building.rooms.length)"
+          [style.background]="'var(--' + s.key + ')'"></i>
+        }
+      </div>
+
+      <div class="rooms">
+        @for (room of item.building.rooms; track $index; let ri = $index) {
+        <div class="room-wrap">
+          <button class="room" [class]="'room s-' + room.status"
+            [attr.aria-label]="'Room ' + room.no + ', ' + label(room.status)"
+            (click)="handleRoomClick(item.index, room)" (mousedown)="startPress(item.index, ri, room)"
+            (mouseup)="cancelPress()" (mouseleave)="cancelPress()" (touchstart)="startPress(item.index, ri, room)"
+            (touchend)="cancelPress()" (touchcancel)="cancelPress()" (contextmenu)="$event.preventDefault()">
+            <b>{{ room.no }}</b>
+            <span>{{ label(room.status) }}</span>
+            @if (room.remark) {
+            <span class="room-remark">{{ room.remark }}</span>
+            }
+          </button>
+
+          @if (editingNoteKey() === noteKey(item.index, ri)) {
+          <div class="note-popover" (click)="$event.stopPropagation()">
+            <textarea [value]="noteDraft()" (input)="noteDraft.set($any($event.target).value)"
+              placeholder="Add a note..." rows="2"></textarea>
+            <div class="note-actions">
+              <button class="note-btn cancel" (click)="cancelNote($event)">cancel</button>
+              @if(btn()=='btn btn-primary'){<button class="note-btn save" (click)="saveNote(item.index, ri)">OK</button>}
+            </div>
+          </div>
+          }
+        </div>
+        }
+      </div>
+    </section>
+    } @empty {
+    <div class="empty">No buildings match. Clear the search or pick another status.</div>
+    }
+  </div>
+</div>

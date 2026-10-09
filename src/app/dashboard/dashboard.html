@@ -1,8 +1,8 @@
 <div class="wrap">
   <h1>TEE PEE</h1>
   <div class="actions">
-    <app-popup (save)="onPopupSave($event)"></app-popup>
     @if(btn()=='btn btn-primary'){
+    <app-popup (save)="onPopupSave($event)"></app-popup>
     <button [class]="btn()" (click)="sendData()">Save</button>
     }@else{
     <button [class]="btnEdit()" (click)="editbuttonToggle()">Edit</button>
@@ -82,7 +82,8 @@
               placeholder="Add a note..." rows="2"></textarea>
             <div class="note-actions">
               <button class="note-btn cancel" (click)="cancelNote($event)">cancel</button>
-              @if(btn()=='btn btn-primary'){<button class="note-btn save" (click)="saveNote(item.index, ri)">OK</button>}
+              @if(btn()=='btn btn-primary'){<button class="note-btn save"
+                (click)="saveNote(item.index, ri)">OK</button>}
             </div>
           </div>
           }

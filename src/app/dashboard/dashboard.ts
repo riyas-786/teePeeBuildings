@@ -147,8 +147,6 @@ export class Dashboard {
         },
       ]);
     }
-    this.btn.set('btn btn-primary');
-    this.btnEdit.set('btn btn-secondary');
   }
 
   sendData() {

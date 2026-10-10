@@ -3,8 +3,9 @@ import { RouterOutlet } from '@angular/router';
 import { Dashboard } from './dashboard/dashboard';
 
 
+
 @Component({
-  imports: [RouterOutlet,  Dashboard],
+  imports: [RouterOutlet, Dashboard],
    standalone: true, 
   selector: 'app-root',
   styleUrl: './app.css',

@@ -49,9 +49,8 @@ export class Signup {
 
     this.loading.set(true);
     this.authService.signup(this.email().trim(), this.password()).subscribe({
-      next: (res: any) => {
+      next: () => {
         this.loading.set(false);
-        localStorage.setItem('token', res.token);
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {

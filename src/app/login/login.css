@@ -97,3 +97,15 @@ h1 {
   color: #fff;
 }
 .btn-primary:hover:not(:disabled) { background: #4338ca; }
+.switch {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 16px 0 0;
+}
+.switch a {
+  color: #4f46e5;
+  font-weight: 600;
+  text-decoration: none;
+}
+.switch a:hover { text-decoration: underline; }

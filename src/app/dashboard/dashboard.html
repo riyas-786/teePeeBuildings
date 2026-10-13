@@ -1,15 +1,13 @@
 <div class="wrap">
-  <h1>TEE PEE</h1>
+  <h1 routerLink="/manage-users" >TEE PEE</h1>
   <div class="actions">
     @if(btn()=='btn btn-primary'){
-    <app-popup (save)="onPopupSave($event)"></app-popup>
+    @if (isAdmin) {<app-popup (save)="onPopupSave($event)"></app-popup>}
     <button [class]="btn()" (click)="sendData()">Save</button>
     }@else{
     <button [class]="btnEdit()" (click)="editbuttonToggle()">Edit</button>
     }
-
-
-    <button class="btn btn-danger" (click)="deleteBuilding()">Delete</button>
+    @if(isAdmin){<button class="btn btn-danger" (click)="deleteBuilding()">Delete</button>}
     <!-- <button class="theme-toggle" (click)="toggleDark()">
       {{ darkMode() ? '☀️ Light' : '🌙 Dark' }}
     </button> -->
@@ -24,13 +22,11 @@
   <!-- Building selector -->
   <div class="bsel" role="group" aria-label="Select building">
     <button [attr.aria-pressed]="selected() === -1" (click)="selected.set(-1)">
-
-      All buildings<small>{{ buildings().length }}</small>
+      <!-- All buildings<small>{{ buildings().length }}</small> -->
+      All buildings<small>{{ visibleBuildingButtons().length }}</small>
     </button>
 
-
-
-    @if(btn()=='btn btn-primary'){
+    <!-- @if(btn()=='btn btn-primary'){
     @for (b of buildings(); track b.name; let i = $index) {
     <button [attr.aria-pressed]="selected() === i" (click)=" sendDataToPopup(i)">
       {{ b.name }}<small>{{ b.rooms.length }}</small>
@@ -42,7 +38,24 @@
       {{ b.name }}<small>{{ b.rooms.length }}</small>
     </button>
     }
+    } -->
+
+    @if(btn()=='btn btn-primary'){
+    @for (item of visibleBuildingButtons(); track item.building.name) {
+    <button [attr.aria-pressed]="selected() === item.index" (click)=" sendDataToPopup(item.index)">
+      {{ item.building.name }}<small>{{ item.building.rooms.length }}</small>
+    </button>
     }
+    }@else{
+    @for (item of visibleBuildingButtons(); track item.building.name) {
+    <button [attr.aria-pressed]="selected() === item.index" (click)="selected.set(item.index)">
+      {{ item.building.name }}<small>{{ item.building.rooms.length }}</small>
+    </button>
+    }
+    }
+
+
+
   </div>
 
   <!-- Buildings -->

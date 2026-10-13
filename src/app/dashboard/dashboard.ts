@@ -1,10 +1,12 @@
 import { Component, computed, signal, viewChild, HostBinding } from '@angular/core';
 import { TeePeeServices } from '../services/tee-pee-services';
 import { NewProperty, Popup } from '../popup/popup';
+import { AuthService, CurrentUser } from '../services/auth-service';
+import { Router, RouterLink } from '@angular/router';
 
 type Status = 'vacant' | 'occupied' | 'reserved' | 'maintenance';
-interface Room { no: number; status: Status; note: string, remark: string }
-interface Building { name: string; rooms: Room[]; }
+interface Room { _id?: string; no: number; status: Status; note: string; remark: string }
+interface Building { _id?: string; name: string; rooms: Room[]; }
 type Counts = Record<Status, number>;
 
 const STATUSES: { key: Status; label: string }[] = [
@@ -14,55 +16,32 @@ const STATUSES: { key: Status; label: string }[] = [
   { key: 'maintenance', label: 'Maintenance' },
 ];
 
-// Fallback data shown before the API responds.
-const apiResponse = [
-  {
-    name: [
-      {
-        id: 1,
-        name: '',
-        rooms: [
-          { id: 1, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-          { id: 2, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-          { id: 3, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-          { id: 4, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-          { id: 5, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-          { id: 6, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-          { id: 7, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-          { id: 8, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-          { id: 9, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-          { id: 10, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-          { id: 11, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-          { id: 12, no: 0, remark: 'remark', note: 'note...', status: 'vacant' },
-        ],
-      },
-    ],
-  },
-];
-
-function sampleData(): Building[] {
-  return apiResponse[0].name.map(place => ({
-    name: place.name,
-    rooms: place.rooms.map(r => ({ no: r.no, remark: r.remark, note: r.note, status: r.status as Status })),
-  }));
-}
-
 @Component({
   selector: 'app-dashboard',
-  imports: [Popup],
+  imports: [Popup, RouterLink],
   standalone: true,
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
 export class Dashboard {
-  constructor(private propertyService: TeePeeServices) { }
+  isAdmin = false;
+  currentUser: CurrentUser | null = null;
+  constructor(
+    private router: Router,
+    private propertyService: TeePeeServices,
+    private authService: AuthService,
+  ) {
+    this.isAdmin = this.authService.isAdmin();
+    this.currentUser = this.authService.getUser();
+  }
 
   // Reference to the <app-popup> in the template, so we can call its methods directly.
   popupRef = viewChild(Popup);
 
   ngOnInit() {
-    this.propertyService.getProduct().subscribe((data) => {
-      this.buildings.set(data[0].name);
+    this.propertyService.getBuildings().subscribe({
+      next: (data) => this.buildings.set(data),
+      error: () => this.showMessage('Failed to load buildings', 'error'),
     });
   }
 
@@ -71,7 +50,7 @@ export class Dashboard {
   btnEdit = signal('btn btn-primary');
   saveMessage = signal('');
   saveStatus = signal<'success' | 'error' | ''>('');
-  buildings = signal<Building[]>(sampleData());
+  buildings = signal<Building[]>([]);
   selected = signal(-1); // -1 = all buildings
   darkMode = signal(false);
 
@@ -83,16 +62,29 @@ export class Dashboard {
   toggleDark() {
     this.darkMode.update(v => !v);
   }
+
   private countOf(rooms: Room[]): Counts {
     const c: Counts = { vacant: 0, occupied: 0, reserved: 0, maintenance: 0 };
     rooms.forEach(r => c[r.status]++);
     return c;
   }
 
-  visibleBuildings = computed(() =>
-    this.buildings()
+  visibleBuildings = computed(() => {
+    const assigned = this.currentUser?.assignedBuildings ?? [];
+    return this.buildings()
       .map((building, index) => ({ building, index, counts: this.countOf(building.rooms) }))
-      .filter(({ index }) => this.selected() < 0 || index === this.selected()));
+      .filter(({ building, index }) => {
+        const inScope = this.isAdmin || assigned.includes(building.name);
+        const matchesSelection = this.selected() < 0 || index === this.selected();
+        return inScope && matchesSelection;
+      });
+  });
+  visibleBuildingButtons = computed(() => {
+    const assigned = this.currentUser?.assignedBuildings ?? [];
+    return this.buildings()
+      .map((b, i) => ({ building: b, index: i }))
+      .filter(({ building }) => this.isAdmin || assigned.includes(building.name));
+  });
 
   pct(count: number, total: number): number {
     return total ? (count / total) * 100 : 0;
@@ -102,13 +94,15 @@ export class Dashboard {
     return STATUSES.find(x => x.key === s)!.label;
   }
 
-
-  // Click a room to cycle its status.
+  // Click a room to cycle its status. Updates the UI immediately, then
+  // persists just that one room via its own small endpoint — if the save
+  // fails, the change is rolled back and an error toast is shown.
   cycle(buildingIndex: number, room: Room) {
-    this.btn.set('btn btn-primary');
-    this.btnEdit.set('btn btn-secondary');
     const keys = STATUSES.map(s => s.key);
+    const previous = room.status;
     const next = keys[(keys.indexOf(room.status) + 1) % keys.length];
+    const building = this.buildings()[buildingIndex];
+
     this.buildings.update(list =>
       list.map((b, i) =>
         i !== buildingIndex ? b : {
@@ -117,51 +111,67 @@ export class Dashboard {
         }
       )
     );
+
+    if (!building._id || !room._id) return; // nothing to persist yet
+
+    this.propertyService.updateRoom(building._id, room._id, { status: next }).subscribe({
+      error: () => {
+        this.buildings.update(list =>
+          list.map((b, i) =>
+            i !== buildingIndex ? b : {
+              ...b,
+              rooms: b.rooms.map(r => (r === room ? { ...r, status: previous } : r)),
+            }
+          )
+        );
+        this.showMessage('Failed to update room. Try again.', 'error');
+      },
+    });
   }
 
   onPopupSave(newProperty: NewProperty) {
-    console.log(newProperty);
+    const rooms: Room[] = newProperty.rooms.map(r => ({
+      no: r.room,
+      note: r.note,
+      remark: r.remark,
+      status: r.status as Status,
+    }));
 
     if (newProperty.editIndex !== undefined) {
-      // Editing an existing building: replace it in place.
-      this.buildings.update(current =>
-        current.map((b, idx) =>
-          idx !== newProperty.editIndex ? b : {
-            name: newProperty.name,
-            rooms: newProperty.rooms.map(r => ({
-              no: r.room,
-              note: r.note,
-              remark: r.remark,
-              status: r.status as Status,
-            })),
-          }
-        )
-      );
+      // Editing an existing building.
+      const building = this.buildings()[newProperty.editIndex];
+      if (!building._id) {
+        this.showMessage('Cannot edit: building has no id yet', 'error');
+        return;
+      }
+      this.propertyService.updateBuilding(building._id, { name: newProperty.name, rooms }).subscribe({
+        next: (updated) => {
+          this.buildings.update(current =>
+            current.map((b, idx) => (idx !== newProperty.editIndex ? b : updated))
+          );
+          this.showMessage('Building updated', 'success');
+        },
+        error: () => this.showMessage('Failed to update building', 'error'),
+      });
     } else {
       // Adding a brand new building.
-      this.buildings.update(current => [
-        ...current,
-        {
-          name: newProperty.name,
-          rooms: newProperty.rooms.map(r => ({ no: r.room, remark: r.remark, note: r.note, status: r.status as Status })),
+      this.propertyService.createBuilding({ name: newProperty.name, rooms }).subscribe({
+        next: (created) => {
+          this.buildings.update(current => [...current, created]);
+          this.showMessage('Building added', 'success');
         },
-      ]);
+        error: () => this.showMessage('Failed to add building', 'error'),
+      });
     }
   }
 
+  // The "Save" button no longer posts the whole array — every room/building
+  // change already persisted itself the moment it happened. This just exits
+  // edit mode.
   sendData() {
-    console.log(this.buildings());
-
-    const data = { name: this.buildings() };
-    this.propertyService.postProduct(data).subscribe({
-      next: () => {
-        this.showMessage('Saved!', 'success');
-        this.btn.set('btn btn-secondary');
-        this.btnEdit.set('btn btn-primary');
-        this.toggleDark()
-      },
-      error: () => this.showMessage('Failed to save. Try again.', 'error'),
-    });
+    this.btn.set('btn btn-secondary');
+    this.btnEdit.set('btn btn-primary');
+    this.showMessage('All changes are saved automatically', 'success');
   }
 
   private showMessage(msg: string, status: 'success' | 'error') {
@@ -175,8 +185,6 @@ export class Dashboard {
 
   // Opens the popup pre-filled with the currently selected building, for editing.
   sendDataToPopup(i: number) {
-
-    // const i = this.selected();
     if (i < 0) {
       this.showMessage('Select a building first', 'error');
       return;
@@ -184,30 +192,34 @@ export class Dashboard {
     const building = this.buildings()[i];
     this.popupRef()?.openForEdit(i, building);
   }
+
   // Deletes the currently selected building.
   deleteBuilding() {
-    this.propertyService.getProduct().subscribe((data) => {
-      this.buildings.set(data[0].name);
-      const i = this.selected();
-      if (i < 0) {
-        this.showMessage('Select a building first', 'error');
-        return;
-      }
+    const i = this.selected();
+    if (i < 0) {
+      this.showMessage('Select a building first', 'error');
+      return;
+    }
 
-      const name = this.buildings()[i].name;
-      const confirmed = confirm(`Delete "${name}"? This can't be undone.`);
-      if (!confirmed) return;
+    const building = this.buildings()[i];
+    const confirmed = confirm(`Delete "${building.name}"? This can't be undone.`);
+    if (!confirmed) return;
 
-      this.buildings.update(current => current.filter((_, idx) => idx !== i));
-      this.selected.set(-1); // reset selection since that index no longer exists
-      this.showMessage('Deleted', 'success');
-      this.btn.set('btn btn-primary');
-      this.btnEdit.set('btn btn-secondary');
-      this.toggleDark();
+    if (!building._id) {
+      this.showMessage('Cannot delete: building has no id yet', 'error');
+      return;
+    }
 
+    this.propertyService.deleteBuilding(building._id).subscribe({
+      next: () => {
+        this.buildings.update(current => current.filter((_, idx) => idx !== i));
+        this.selected.set(-1);
+        this.showMessage('Deleted', 'success');
+      },
+      error: () => this.showMessage('Failed to delete building', 'error'),
     });
-
   }
+
   // Tracks which room's note popover is open, e.g. "0-2" = building 0, room 2.
   editingNoteKey = signal<string | null>(null);
   noteDraft = signal('');
@@ -252,20 +264,28 @@ export class Dashboard {
     this.noteDraft.set(room.note ?? '');
   }
 
+  // Saves just this room's note via its own small endpoint.
   saveNote(buildingIndex: number, roomIndex: number) {
-    if (this.btn() == "btn btn-primary") {
-      const value = this.noteDraft();
-      this.buildings.update(list =>
-        list.map((b, bi) =>
-          bi !== buildingIndex ? b : {
-            ...b,
-            rooms: b.rooms.map((r, ri) => (ri !== roomIndex ? r : { ...r, note: value })),
-          }
-        )
-      );
-      this.btn.set('btn btn-primary');
-      this.btnEdit.set('btn btn-secondary');
-      this.editingNoteKey.set(null);
+    if (this.btn() !== 'btn btn-primary') return;
+
+    const value = this.noteDraft();
+    const building = this.buildings()[buildingIndex];
+    const room = building.rooms[roomIndex];
+
+    this.buildings.update(list =>
+      list.map((b, bi) =>
+        bi !== buildingIndex ? b : {
+          ...b,
+          rooms: b.rooms.map((r, ri) => (ri !== roomIndex ? r : { ...r, note: value })),
+        }
+      )
+    );
+    this.editingNoteKey.set(null);
+
+    if (building._id && room._id) {
+      this.propertyService.updateRoom(building._id, room._id, { note: value }).subscribe({
+        error: () => this.showMessage('Failed to save note', 'error'),
+      });
     }
   }
 
@@ -273,14 +293,17 @@ export class Dashboard {
     event.stopPropagation();
     this.editingNoteKey.set(null);
   }
-  editbuttonToggle() {
-    this.propertyService.getProduct().subscribe((data) => {
-      this.buildings.set(data[0].name);
-      this.btn.set('btn btn-primary');
-      this.btnEdit.set('btn btn-secondary');
-      this.toggleDark()
-      console.log(data[0].name);
-    });
 
+  // Enters edit mode. Re-fetches from the server first so any unsaved local
+  // state is discarded and you start editing from the real current data.
+  editbuttonToggle() {
+    this.propertyService.getBuildings().subscribe({
+      next: (data) => {
+        this.buildings.set(data);
+        this.btn.set('btn btn-primary');
+        this.btnEdit.set('btn btn-secondary');
+      },
+      error: () => this.showMessage('Failed to refresh buildings', 'error'),
+    });
   }
 }

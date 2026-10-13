@@ -1,10 +1,11 @@
 import { Component, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../services/auth-service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
+  imports: [RouterLink],
   templateUrl: './login.html',
   styleUrl: './login.css',
 })
@@ -34,11 +35,8 @@ export class Login {
 
     this.loading.set(true);
     this.authService.login(this.email().trim(), this.password()).subscribe({
-      next: (res: any) => {
+      next: () => {
         this.loading.set(false);
-        // Store the token so future requests can send it, and so the app
-        // knows the user is logged in after a page refresh.
-        localStorage.setItem('token', res.token);
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {

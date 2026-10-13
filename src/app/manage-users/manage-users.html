@@ -1,0 +1,69 @@
+<div class="page">
+  <div class="header">
+    <h1>Manage Users</h1>
+    <a routerLink="/dashboard" class="btn btn-secondary">Back to dashboard</a>
+  </div>
+
+  @if (message()) {
+    <div class="toast" [class.success]="!messageIsError()" [class.error]="messageIsError()">
+      {{ message() }}
+    </div>
+  }
+
+  <div class="table-wrap">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Assigned buildings</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (user of users(); track user._id) {
+          <tr>
+            <td class="email-cell">{{ user.email }}</td>
+            <td>
+              <select
+                class="role-select"
+                [value]="user.role"
+                (change)="setRole(user, $any($event.target).value)"
+              >
+                <option value="staff">Staff</option>
+                <option value="admin">Admin</option>
+              </select>
+            </td>
+            <td>
+              <div class="buildings-list">
+                @if (user.role === 'admin') {
+                  <span class="muted">All buildings (admin)</span>
+                } @else {
+                  @for (name of allBuildingNames(); track name) {
+                    <label class="building-check">
+                      <input
+                        type="checkbox"
+                        [checked]="user.assignedBuildings.includes(name)"
+                        (change)="toggleBuilding(user, name, $any($event.target).checked)"
+                      />
+                      {{ name }}
+                    </label>
+                  } @empty {
+                    <span class="muted">No buildings found</span>
+                  }
+                }
+              </div>
+            </td>
+            <td>
+              <button class="btn btn-primary" (click)="save(user)">Save</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="4" class="muted">No users found</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

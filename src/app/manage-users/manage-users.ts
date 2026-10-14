@@ -22,12 +22,6 @@ export class ManageUsers {
 
   private apiUrl = `${environment.apiUrl}/users`;
   private propertyUrl = `${environment.apiUrl}/teePee`;
-  // private apiUrl = `http://localhost:3000/users`;
-  // private propertyUrl = "http://localhost:3000/teePee"
-  // private apiUrl = "https://teepee-back.vercel.app/users"
-  // private propertyUrl = "https://teepee-back.vercel.app/teePee"
-
-
 
   users = signal<ManagedUser[]>([]);
   allBuildingNames = signal<string[]>([]);

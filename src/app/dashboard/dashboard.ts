@@ -5,7 +5,11 @@ import { AuthService, CurrentUser } from '../services/auth-service';
 import { Router, RouterLink } from '@angular/router';
 
 type Status = 'vacant' | 'occupied' | 'reserved' | 'maintenance';
-interface Room { _id?: string; no: number; status: Status; note: string; remark: string }
+interface Room {
+  _id?: string; no: number | string; status: Status;
+  note: string; remark: string; sqft: number; mergedFrom?: Room[]
+  partitionGroup?: string; partitionOf?: Room
+}
 interface Building { _id?: string; name: string; rooms: Room[]; }
 type Counts = Record<Status, number>;
 
@@ -53,6 +57,16 @@ export class Dashboard {
   buildings = signal<Building[]>([]);
   selected = signal(-1); // -1 = all buildings
   darkMode = signal(false);
+
+  mergeMode = signal(false);
+  selectedRoomIds = signal<string[]>([]);
+
+  splitTarget = signal<{ bi: number; room: Room } | null>(null);
+  splitParts = signal<{ no: string; sqft: string }[]>([]);
+  splitTotal = computed(() => this.splitParts().reduce((s, p) => s + (Number(p.sqft) || 0), 0));
+
+  private mergeBuildingIndex = -1;
+
 
   @HostBinding('class.dark')
   get isDark() {
@@ -131,12 +145,9 @@ export class Dashboard {
 
   onPopupSave(newProperty: NewProperty) {
     const rooms: Room[] = newProperty.rooms.map(r => ({
-      no: r.room,
-      note: r.note,
-      remark: r.remark,
-      status: r.status as Status,
+      no: r.room, note: r.note, remark: r.remark, status: r.status as Status,
+      sqft: r.sqft, mergedFrom: r.mergedFrom, partitionGroup: r.partitionGroup, partitionOf: r.partitionOf,
     }));
-
     if (newProperty.editIndex !== undefined) {
       // Editing an existing building.
       const building = this.buildings()[newProperty.editIndex];
@@ -171,7 +182,8 @@ export class Dashboard {
   sendData() {
     this.btn.set('btn btn-secondary');
     this.btnEdit.set('btn btn-primary');
-    this.showMessage('All changes are saved automatically', 'success');
+    // this.showMessage('All changes are saved automatically', 'success');
+    this.mergeMode.set(false)
   }
 
   private showMessage(msg: string, status: 'success' | 'error') {
@@ -251,12 +263,10 @@ export class Dashboard {
 
   // A short tap should cycle the status, but only if a long-press didn't already fire.
   handleRoomClick(buildingIndex: number, room: Room) {
-    if (this.longPressFired) {
-      this.longPressFired = false; // swallow the click that follows a long-press release
-      return;
-    } else if (this.btn() == 'btn btn-primary') {
-      this.cycle(buildingIndex, room);
-    }
+    if (this.longPressFired) { this.longPressFired = false; return; }
+    if (this.btn() !== 'btn btn-primary') return;
+    if (this.mergeMode()) { this.toggleSelect(buildingIndex, room); return; }
+    this.cycle(buildingIndex, room);
   }
 
   openNote(buildingIndex: number, roomIndex: number, room: Room) {
@@ -306,4 +316,110 @@ export class Dashboard {
       error: () => this.showMessage('Failed to refresh buildings', 'error'),
     });
   }
+
+
+
+
+  isSelected(room: Room) { return !!room._id && this.selectedRoomIds().includes(room._id); }
+
+  toggleMerge() {
+    this.mergeMode.update(v => !v);
+    this.clearSelection();
+  }
+  private clearSelection() { this.selectedRoomIds.set([]); this.mergeBuildingIndex = -1; }
+
+  private toggleSelect(bi: number, room: Room) {
+    if (!room._id) return;
+    if (this.selectedRoomIds().length && this.mergeBuildingIndex !== bi) {
+      this.showMessage('Pick rooms from one building', 'error');
+      return;
+    }
+    this.mergeBuildingIndex = bi;
+    this.selectedRoomIds.update(ids =>
+      ids.includes(room._id!) ? ids.filter(x => x !== room._id) : [...ids, room._id!]);
+    if (!this.selectedRoomIds().length) this.mergeBuildingIndex = -1;
+  }
+
+  mergeSelected() {
+    const bi = this.mergeBuildingIndex;
+    const building = this.buildings()[bi];
+    if (!building?._id || this.selectedRoomIds().length < 2) return;
+    this.propertyService.mergeRooms(building._id, this.selectedRoomIds()).subscribe({
+      next: (updated) => {
+        this.buildings.update(list => list.map((b, i) => (i === bi ? updated : b)));
+        this.mergeMode.set(false);
+        this.clearSelection();
+        this.showMessage('Rooms merged', 'success');
+      },
+      error: (err) => this.showMessage(err.error || 'Failed to merge rooms', 'error'),
+    });
+  }
+
+  separate(bi: number, room: Room) {
+    const building = this.buildings()[bi];
+    if (!building._id || !room._id) return;
+    this.propertyService.separateRoom(building._id, room._id).subscribe({
+      next: (updated) => {
+        this.buildings.update(list => list.map((b, i) => (i === bi ? updated : b)));
+        this.editingNoteKey.set(null);
+        this.showMessage('Room separated', 'success');
+      },
+      error: (err) => this.showMessage(err.error || 'Failed to separate room', 'error'),
+    });
+  }
+
+
+  // ************partitions**************
+
+
+  openSplit(bi: number, room: Room) {
+    this.editingNoteKey.set(null);
+    this.splitTarget.set({ bi, room });
+    this.splitParts.set([{ no: `${room.no}A`, sqft: '' }, { no: `${room.no}B`, sqft: '' }]);
+  }
+  closeSplit() { this.splitTarget.set(null); }
+
+  addPart() {
+    const base = this.splitTarget()?.room.no ?? '';
+    const letter = String.fromCharCode(65 + this.splitParts().length);   // A, B, C...
+    this.splitParts.update(l => [...l, { no: `${base}${letter}`, sqft: '' }]);
+  }
+  removePart(i: number) {
+    if (this.splitParts().length <= 2) return;
+    this.splitParts.update(l => l.filter((_, idx) => idx !== i));
+  }
+  updatePart(i: number, field: 'no' | 'sqft', value: string) {
+    this.splitParts.update(l => l.map((p, idx) => (idx === i ? { ...p, [field]: value } : p)));
+  }
+
+  confirmSplit() {
+    const t = this.splitTarget();
+    if (!t) return;
+    const building = this.buildings()[t.bi];
+    if (!building._id || !t.room._id) return;
+    const parts = this.splitParts().map(p => ({ no: p.no.trim(), sqft: Number(p.sqft) || 0 }));
+    this.propertyService.splitRoom(building._id, t.room._id, parts).subscribe({
+      next: (updated) => {
+        this.buildings.update(list => list.map((b, i) => (i === t.bi ? updated : b)));
+        this.closeSplit();
+        this.showMessage('Room split', 'success');
+      },
+      error: (err) => this.showMessage(err.error || 'Failed to split room', 'error'),
+    });
+  }
+
+  rejoin(bi: number, room: Room) {
+    const building = this.buildings()[bi];
+    if (!building._id || !room._id) return;
+    this.propertyService.rejoinRoom(building._id, room._id).subscribe({
+      next: (updated) => {
+        this.buildings.update(list => list.map((b, i) => (i === bi ? updated : b)));
+        this.editingNoteKey.set(null);
+        this.showMessage('Partitions rejoined', 'success');
+      },
+      error: (err) => this.showMessage(err.error || 'Failed to rejoin', 'error'),
+    });
+  }
+
+
 }

@@ -5,10 +5,14 @@ import { environment } from '../../environments/environment';
 
 export interface Room {
   _id?: string;
-  no: number;
+  no: number | string;
   status: 'vacant' | 'occupied' | 'reserved' | 'maintenance';
   note: string;
   remark: string;
+  sqft: number;
+  mergedFrom?: Room[];
+  partitionGroup?: string;
+  partitionOf?: Room;
 }
 
 export interface Building {
@@ -20,10 +24,9 @@ export interface Building {
 @Injectable({ providedIn: 'root' })
 export class TeePeeServices {
   private apiUrl = `${environment.apiUrl}/teePee`;
-    // apiUrl = "http://localhost:3000/teePee"
-    // apiUrl = "https://teepee-back.vercel.app/teePee"
 
-  constructor(private http: HttpClient) {}
+
+  constructor(private http: HttpClient) { }
 
   // GET all buildings (admin: all, staff: only their assigned ones — backend filters this).
   getBuildings(): Observable<Building[]> {
@@ -51,8 +54,21 @@ export class TeePeeServices {
   updateRoom(
     buildingId: string,
     roomId: string,
-    data: Partial<Pick<Room, 'status' | 'note' | 'remark'>>
+    data: Partial<Pick<Room, 'status' | 'note' | 'remark' | 'sqft'>>
   ): Observable<Room> {
     return this.http.patch<Room>(`${this.apiUrl}/${buildingId}/rooms/${roomId}`, data);
+  }
+  mergeRooms(buildingId: string, roomIds: string[]): Observable<Building> {
+    return this.http.post<Building>(`${this.apiUrl}/${buildingId}/rooms/merge`, { roomIds });
+  }
+
+  separateRoom(buildingId: string, roomId: string): Observable<Building> {
+    return this.http.post<Building>(`${this.apiUrl}/${buildingId}/rooms/${roomId}/separate`, {});
+  }
+  splitRoom(buildingId: string, roomId: string, parts: { no: string; sqft: number }[]): Observable<Building> {
+    return this.http.post<Building>(`${this.apiUrl}/${buildingId}/rooms/${roomId}/split`, { parts });
+  }
+  rejoinRoom(buildingId: string, roomId: string): Observable<Building> {
+    return this.http.post<Building>(`${this.apiUrl}/${buildingId}/rooms/${roomId}/rejoin`, {});
   }
 }

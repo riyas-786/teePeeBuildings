@@ -18,8 +18,7 @@ export interface CurrentUser {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private apiUrl = `${environment.apiUrl}/auth`;
-  // private apiUrl = `http://localhost:3000/auth`;
-  // private apiUrl = "https://teepee-back.vercel.app/auth";
+
   constructor(private http: HttpClient) { }
 
   // signup(email: string, password: string): Observable<any> {

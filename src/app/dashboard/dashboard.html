@@ -1,13 +1,29 @@
 <div class="wrap">
-  <h1 routerLink="/manage-users" >TEE PEE</h1>
+  <h1>TEE PEE</h1>
   <div class="actions">
     @if(btn()=='btn btn-primary'){
-    @if (isAdmin) {<app-popup (save)="onPopupSave($event)"></app-popup>}
-    <button [class]="btn()" (click)="sendData()">Save</button>
-    }@else{
-    <button [class]="btnEdit()" (click)="editbuttonToggle()">Edit</button>
+    @if (isAdmin) {
+    <app-popup (save)="onPopupSave($event)"></app-popup>
+    <button class="btn btn-primary" (click)="toggleMerge()">
+      {{ mergeMode() ? 'Cancel merge' : 'Merge rooms' }}
+    </button>
+    @if (mergeMode() && selectedRoomIds().length >= 2) {
+    <button class="btn btn-primary" (click)="mergeSelected()">
+      Merge ({{ selectedRoomIds().length }})
+    </button>
     }
-    @if(isAdmin){<button class="btn btn-danger" (click)="deleteBuilding()">Delete</button>}
+    }
+    <button [class]="btn()" (click)="sendData()">Disable</button>
+
+
+    }@else{
+    <button [class]="btnEdit()" (click)="editbuttonToggle()">Enable</button>
+    }
+    @if(isAdmin){
+    <button class="btn btn-primary" routerLink="/manage-users">U-Roles</button>
+    <button class="btn btn-primary" routerLink="/signup">SignUp</button>
+    <button class="btn btn-danger" (click)="deleteBuilding()">Delete</button>
+    }
     <!-- <button class="theme-toggle" (click)="toggleDark()">
       {{ darkMode() ? '☀️ Light' : '🌙 Dark' }}
     </button> -->
@@ -76,14 +92,15 @@
 
       <div class="rooms">
         @for (room of item.building.rooms; track $index; let ri = $index) {
-        <div class="room-wrap">
-          <button class="room" [class]="'room s-' + room.status"
+        <div class="room-wrap" [class.merged]="room.mergedFrom?.length">
+          <button class="room" [class]="'room s-' + room.status" [class.selected]="isSelected(room)"
             [attr.aria-label]="'Room ' + room.no + ', ' + label(room.status)"
             (click)="handleRoomClick(item.index, room)" (mousedown)="startPress(item.index, ri, room)"
             (mouseup)="cancelPress()" (mouseleave)="cancelPress()" (touchstart)="startPress(item.index, ri, room)"
             (touchend)="cancelPress()" (touchcancel)="cancelPress()" (contextmenu)="$event.preventDefault()">
             <b>{{ room.no }}</b>
             <span>{{ label(room.status) }}</span>
+            <span class="room-sqft">{{ room.sqft || 0 }} sqft</span>
             @if (room.remark) {
             <span class="room-remark">{{ room.remark }}</span>
             }
@@ -95,6 +112,15 @@
               placeholder="Add a note..." rows="2"></textarea>
             <div class="note-actions">
               <button class="note-btn cancel" (click)="cancelNote($event)">cancel</button>
+              @if (btn()=='btn btn-primary' && room.mergedFrom?.length) {
+              <button class="note-btn cancel" (click)="separate(item.index, room)">Separate</button>
+              }
+              @if (btn()=='btn btn-primary' && !room.mergedFrom?.length && !room.partitionGroup) {
+              <button class="note-btn cancel" (click)="openSplit(item.index, room)">Split</button>
+              }
+              @if (btn()=='btn btn-primary' && room.partitionGroup) {
+              <button class="note-btn cancel" (click)="rejoin(item.index, room)">Rejoin</button>
+              }
               @if(btn()=='btn btn-primary'){<button class="note-btn save"
                 (click)="saveNote(item.index, ri)">OK</button>}
             </div>
@@ -108,4 +134,32 @@
     <div class="empty">No buildings match. Clear the search or pick another status.</div>
     }
   </div>
+  @if (splitTarget(); as t) {
+  <div class="overlay" (click)="closeSplit()">
+    <div class="split-dialog" (click)="$event.stopPropagation()">
+      <h3>Split room {{ t.room.no }}</h3>
+      <p class="split-note">Original: {{ t.room.sqft || 0 }} sqft</p>
+
+      @for (p of splitParts(); track $index; let i = $index) {
+      <div class="split-row">
+        <input type="text" placeholder="Room no" [value]="p.no"
+          (input)="updatePart(i, 'no', $any($event.target).value)">
+        <input type="number" min="0" placeholder="Sq ft" [value]="p.sqft"
+          (input)="updatePart(i, 'sqft', $any($event.target).value)">
+        @if (splitParts().length > 2) {
+        <button class="note-btn cancel" (click)="removePart(i)">✕</button>
+        }
+      </div>
+      }
+
+      <button class="btn btn-secondary" (click)="addPart()">+ Add partition</button>
+      <p class="split-note">Total: {{ splitTotal() }} / {{ t.room.sqft || 0 }} sqft</p>
+
+      <div class="actions">
+        <button class="btn btn-secondary" (click)="closeSplit()">Cancel</button>
+        <button class="btn btn-primary" (click)="confirmSplit()">Split</button>
+      </div>
+    </div>
+  </div>
+  }
 </div>

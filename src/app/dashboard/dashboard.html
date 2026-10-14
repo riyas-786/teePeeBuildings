@@ -5,7 +5,7 @@
     @if (isAdmin) {
     <app-popup (save)="onPopupSave($event)"></app-popup>
     <button class="btn btn-primary" (click)="toggleMerge()">
-      {{ mergeMode() ? 'Split' : 'Merge' }}
+      {{ mergeMode() ? 'Slt' : 'Mrg' }}
     </button>
     @if (mergeMode() && selectedRoomIds().length >= 2) {
     <button class="btn btn-primary" (click)="mergeSelected()">
@@ -13,15 +13,15 @@
     </button>
     }
     }
-    <button [class]="btn()" (click)="sendData()">Dsbl</button>
+    <button [class]="btn()" (click)="sendData()">DL</button>
 
 
     }@else{
-    <button [class]="btnEdit()" (click)="editbuttonToggle()">Enbl</button>
+    <button [class]="btnEdit()" (click)="editbuttonToggle()">EL</button>
     }
     @if(isAdmin){
-    <button class="btn btn-primary" routerLink="/manage-users">Roles</button>
-    <button class="btn btn-primary" routerLink="/signup">SignUp</button>
+    <button class="btn btn-primary" routerLink="/manage-users">RL</button>
+    <button class="btn btn-primary" routerLink="/signup">SU</button>
     <button class="btn btn-danger" (click)="deleteBuilding()">Dlt</button>
     }
     <!-- <button class="theme-toggle" (click)="toggleDark()">

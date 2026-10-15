@@ -1,40 +1,38 @@
 <div class="wrap">
   <h1>TEE PEE</h1>
-  <div class="actions">
-    @if(btn()=='btn btn-primary'){
-    @if (isAdmin) {
-    <app-popup (save)="onPopupSave($event)"></app-popup>
-    <button class="btn btn-primary" (click)="toggleMerge()">
-      {{ mergeMode() ? 'Slt' : 'Mrg' }}
-    </button>
-    @if (mergeMode() && selectedRoomIds().length >= 2) {
-    <button class="btn btn-primary" (click)="mergeSelected()">
-      Merge ({{ selectedRoomIds().length }})
-    </button>
-    }
-    }
-    <button [class]="btn()" (click)="sendData()">DL</button>
+    <div class="bsel">
+      @if(btn()=='btn btn-primary'){
+      @if (isAdmin) {
+      <app-popup (save)="onPopupSave($event)"></app-popup>
+      <button class="btn btn-primary" (click)="toggleMerge()">
+        {{ mergeMode() ? 'Cancel Merge' : 'Merge Rooms' }}
+      </button>
+      @if (mergeMode() && selectedRoomIds().length >= 2) {
+      <button class="btn btn-primary" (click)="mergeSelected()">
+        Merge ({{ selectedRoomIds().length }})
+      </button>
+      }
+      }
+      <button [class]="btn()" (click)="sendData()">Disable</button>
 
 
-    }@else{
-    <button [class]="btnEdit()" (click)="editbuttonToggle()">EL</button>
-    }
-    @if(isAdmin){
-    <button class="btn btn-primary" routerLink="/manage-users">RL</button>
-    <button class="btn btn-primary" routerLink="/signup">SU</button>
-    <button class="btn btn-danger" (click)="deleteBuilding()">Dlt</button>
-    }
-    <!-- <button class="theme-toggle" (click)="toggleDark()">
+      }@else{
+      <button [class]="btnEdit()" (click)="editbuttonToggle()">Enable</button>
+      }
+      @if(isAdmin){
+      <button class="btn btn-primary" routerLink="/manage-users">U-Roles</button>
+      <button class="btn btn-primary" routerLink="/signup">Create User</button>
+      <button class="btn btn-danger" (click)="deleteBuilding()">Delete</button>
+      }
+      <!-- <button class="theme-toggle" (click)="toggleDark()">
       {{ darkMode() ? '☀️ Light' : '🌙 Dark' }}
-    </button> -->
-    @if (saveMessage()) {
-    <div class="toast" [class.success]="saveStatus() === 'success'" [class.error]="saveStatus() === 'error'">
-      {{ saveMessage() }}
+      </button> -->
+      @if (saveMessage()) {
+      <div class="toast" [class.success]="saveStatus() === 'success'" [class.error]="saveStatus() === 'error'">
+        {{ saveMessage() }}
+      </div>
+      }
     </div>
-    }
-  </div>
-  <hr>
-
   <!-- Building selector -->
   <div class="bsel" role="group" aria-label="Select building">
     <button [attr.aria-pressed]="selected() === -1" (click)="selected.set(-1)">

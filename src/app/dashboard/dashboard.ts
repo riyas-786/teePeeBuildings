@@ -8,7 +8,7 @@ type Status = 'vacant' | 'occupied' | 'reserved' | 'maintenance';
 interface Room {
   _id?: string; no: number | string; status: Status;
   note: string; remark: string; sqft: number; mergedFrom?: Room[]
-  partitionGroup?: string; partitionOf?: Room
+  partitionGroup?: string; partitionOf?: Room;rentPaidMonths?: string[];
 }
 interface Building { _id?: string; name: string; rooms: Room[]; }
 type Counts = Record<Status, number>;
@@ -146,7 +146,8 @@ export class Dashboard {
   onPopupSave(newProperty: NewProperty) {
     const rooms: Room[] = newProperty.rooms.map(r => ({
       no: r.room, note: r.note, remark: r.remark, status: r.status as Status,
-      sqft: r.sqft, mergedFrom: r.mergedFrom, partitionGroup: r.partitionGroup, partitionOf: r.partitionOf,
+      sqft: r.sqft, mergedFrom: r.mergedFrom, partitionGroup: r.partitionGroup,
+       partitionOf: r.partitionOf,rentPaidMonths: r.rentPaidMonths,
     }));
     if (newProperty.editIndex !== undefined) {
       // Editing an existing building.

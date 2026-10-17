@@ -4,6 +4,7 @@ import { Login } from './login/login';
 import { Signup } from './signup/signup';
 import { authGuard } from './services/auth-guard';
 import { ManageUsers } from './manage-users/manage-users';
+import { Rent } from './rent/rent';
 
 export const routes: Routes = [
     { path: "login", component: Login, },
@@ -11,4 +12,5 @@ export const routes: Routes = [
     { path: 'dashboard', component: Dashboard, canActivate: [authGuard] },
     { path: '', redirectTo: '/login', pathMatch: 'full' },
     { path: 'manage-users', component: ManageUsers, canActivate: [authGuard] },
+    { path: 'rent', component: Rent },
 ];

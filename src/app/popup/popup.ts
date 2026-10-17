@@ -3,14 +3,14 @@ import { Component, ElementRef, EventEmitter, Output, signal, viewChild } from '
 interface RoomDraft {
   room: string; remark: string; note: string;
   status: string; sqft: string; mergedFrom?: any[];
-  partitionGroup?: string; partitionOf?: any;
+  partitionGroup?: string; partitionOf?: any; rentPaidMonths?: string[];
 }
 
 export interface NewProperty {
   name: string;
   rooms: {
     id: number; room: string; remark: string; note: string; status: string;
-    sqft: number; mergedFrom?: any[];partitionGroup?: string; partitionOf?: any;
+    sqft: number; mergedFrom?: any[]; partitionGroup?: string; partitionOf?: any; rentPaidMonths?: string[];
   }[];
   editIndex?: number;
 }
@@ -48,9 +48,11 @@ export class Popup {
     index: number,
     building: {
       name: string;
-      rooms: { no: number | string; remark: string; note: string;
-         status: string; sqft?: number; mergedFrom?: any[],partitionGroup?: string;
-          partitionOf?: any; }[];   
+      rooms: {
+        no: number | string; remark: string; note: string;
+        status: string; sqft?: number; mergedFrom?: any[], partitionGroup?: string;
+        partitionOf?: any; rentPaidMonths?: string[]
+      }[];
     }
   ) {
     this.editIndex = index;
@@ -64,7 +66,8 @@ export class Popup {
         sqft: String(r.sqft ?? 0),
         mergedFrom: r.mergedFrom,
         partitionGroup: r.partitionGroup,
-         partitionOf: r.partitionOf
+        partitionOf: r.partitionOf,
+        rentPaidMonths: r.rentPaidMonths
       }))
     );
     this.errorMessage.set('');
@@ -123,7 +126,7 @@ export class Popup {
         status: r.status || 'vacant',
         sqft: Number(r.sqft) || 0,
         mergedFrom: r.mergedFrom,
-        partitionGroup: r.partitionGroup, partitionOf: r.partitionOf,
+        partitionGroup: r.partitionGroup, partitionOf: r.partitionOf,rentPaid: r.rentPaidMonths,
       })),
       editIndex: this.editIndex ?? undefined,
     };

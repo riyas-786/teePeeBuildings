@@ -13,6 +13,7 @@ export interface Room {
   mergedFrom?: Room[];
   partitionGroup?: string;
   partitionOf?: Room;
+  rentPaidMonths?: string[];
 }
 
 export interface Building {
@@ -70,5 +71,9 @@ export class TeePeeServices {
   }
   rejoinRoom(buildingId: string, roomId: string): Observable<Building> {
     return this.http.post<Building>(`${this.apiUrl}/${buildingId}/rooms/${roomId}/rejoin`, {});
+  }
+  setRentPaid(buildingId: string, roomId: string, month: string, paid: boolean): Observable<{ month: string; paid: boolean }> {
+    return this.http.patch<{ month: string; paid: boolean }>(
+      `${this.apiUrl}/${buildingId}/rooms/${roomId}/rent`, { month, paid });
   }
 }

@@ -1,0 +1,84 @@
+<div class="page">
+  <div class="header">
+    <h1>Rent Overview</h1>
+    <div class="header-actions">
+      <input type="month" class="month-input" [value]="selectedMonth()" (change)="setMonth($any($event.target).value)">
+      <a routerLink="/dashboard" class="btn">Back to dashboard</a>
+    </div>
+  </div>
+
+  @if (message()) {
+  <div class="toast" [class.error]="messageIsError()">{{ message() }}</div>
+  }
+
+  <p class="summary">
+    {{ selectedMonth() }}: {{ paidCount() }} of {{ rows().length }} rooms paid · {{ totalSqft() }} sqft total
+
+  </p>
+  <div class="filters">
+    <select [value]="buildingFilter()" (change)="buildingFilter.set($any($event.target).value)">
+      <option value="all">All buildings</option>
+      @for (name of buildingNames(); track name) {
+      <option [value]="name">{{ name }}</option>
+      }
+    </select>
+
+    <select [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)">
+      <option value="all">All statuses</option>
+      @for (s of statusOptions; track s) {
+      <option [value]="s">{{ s }}</option>
+      }
+    </select>
+
+    <select [value]="paidFilter()" (change)="paidFilter.set($any($event.target).value)">
+      <option value="all">Paid & unpaid</option>
+      <option value="paid">Paid</option>
+      <option value="unpaid">Not paid</option>
+    </select>
+
+    <input type="search" placeholder="Search room no" [value]="search()"
+      (input)="search.set($any($event.target).value)">
+
+    @if (hasFilters()) {
+    <button class="btn" (click)="clearFilters()">Clear</button>
+    }
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Building</th>
+          <th>Room</th>
+          <th>Status</th>
+          <th>Sq ft</th>
+          <th>Remark</th>
+          <th>Note</th>
+          <th>Months paid</th>
+          <th>Rent paid</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.room._id ?? $index) {
+        <tr [class.paid]="isPaid(row.room)">
+          <td>{{ row.building.name }}</td>
+          <td><b>{{ row.room.no }}</b></td>
+          <td><span class="chip s-{{ row.room.status }}">{{ row.room.status }}</span></td>
+          <td>{{ row.room.sqft || 0 }}</td>
+          <td>{{ row.room.remark }}</td>
+          <td>{{ row.room.note }}</td>
+          <td>{{ row.room.rentPaidMonths?.length || 0 }}</td>
+          <td class="center">
+            <input type="checkbox" [checked]="isPaid(row.room)"
+              (change)="toggleRent(row.building, row.room, $any($event.target).checked)"
+              [attr.aria-label]="'Rent paid for room ' + row.room.no">
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="8" class="empty">No rooms match the filters.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
